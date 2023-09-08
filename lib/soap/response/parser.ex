@@ -32,11 +32,26 @@ defmodule Soap.Response.Parser do
   end
 
   @spec parse_record(tuple()) :: map() | String.t()
-  defp parse_record({:xmlElement, tag_name, _, _, _, _, _, _, elements, _, _, _}) do
-    %{tag_name => parse_elements(elements)}
+  defp parse_record({:xmlElement, tag_name, _, _, _, _, _, attributes, elements, _, _, _}) do
+    case parse_elements(elements) do
+      elements when is_map(elements) ->
+        %{tag_name => Map.merge(parse_attributes(attributes), elements)}
+
+      elements ->
+        %{tag_name => elements}
+    end
   end
 
   defp parse_record({:xmlText, _, _, _, value, _}), do: transform_record_value(value)
+
+  @spec parse_attributes([tuple()]) :: map()
+  def parse_attributes(attributes) do
+    attributes
+    |> Enum.map(fn {:xmlAttribute, tag_name, _, _, _, _, _, _, value, _} ->
+      {tag_name, to_string(value)}
+    end)
+    |> Enum.into(%{})
+  end
 
   defp transform_record_value(nil), do: nil
   defp transform_record_value(value) when is_list(value), do: value |> to_string() |> String.trim()
